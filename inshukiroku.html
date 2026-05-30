@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>飲酒記録</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="飲酒記録">
+<meta name="theme-color" content="#16151a">
+<style>
+  :root{
+    --bg:#16151a; --bg2:#201f27; --bg3:#2a2833;
+    --text:#ece8e1; --muted:#9a948c; --faint:#6b665f;
+    --accent:#d9a05b; --accent-soft:rgba(217,160,91,.16);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --danger:#cc7a6b;
+    --safe-top:env(safe-area-inset-top); --safe-bot:env(safe-area-inset-bottom);
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font);
+    font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;overscroll-behavior-y:none;}
+  body{padding-top:var(--safe-top);}
+  #app{max-width:560px;margin:0 auto;padding:8px 16px calc(86px + var(--safe-bot));}
+  h1,h2,h3{font-weight:600;margin:0;}
+  button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none;}
+  input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);background:var(--bg3);
+    border:1px solid var(--line2);border-radius:10px;padding:10px 12px;width:100%;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;min-height:64px;}
+  .muted{color:var(--muted);} .faint{color:var(--faint);}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  /* header */
+  .topbar{display:flex;align-items:baseline;gap:8px;padding:10px 2px 14px;}
+  .topbar .day{font-size:20px;font-weight:600;letter-spacing:.02em;}
+  .topbar .hint{font-size:12px;color:var(--faint);}
+
+  /* total card */
+  .total{background:var(--bg2);border:1px solid var(--line);border-radius:18px;
+    padding:20px 18px;text-align:center;margin-bottom:18px;}
+  .total .label{font-size:12px;color:var(--muted);letter-spacing:.12em;}
+  .total .g{font-size:54px;font-weight:700;line-height:1.05;margin:4px 0 2px;letter-spacing:-.01em;}
+  .total .g small{font-size:22px;font-weight:600;color:var(--muted);margin-left:4px;}
+  .total .sub{font-size:14px;color:var(--muted);margin-top:6px;}
+  .total .sub b{color:var(--text);font-weight:600;}
+
+  .section-label{font-size:12px;color:var(--muted);letter-spacing:.1em;margin:22px 2px 10px;}
+
+  /* preset rows */
+  .preset-row{display:flex;align-items:center;gap:10px;background:var(--bg2);
+    border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:9px;}
+  .preset-row .nm{flex:1;font-size:15px;font-weight:500;min-width:0;}
+  .preset-row .nm .abv{font-size:11px;color:var(--faint);margin-left:6px;font-weight:400;}
+  .sizebtn{background:var(--bg3);border:1px solid var(--line2);border-radius:11px;
+    padding:9px 13px;font-size:14px;font-weight:600;color:var(--text);min-width:52px;
+    transition:transform .08s,background .12s;}
+  .sizebtn:active{transform:scale(.93);background:var(--accent-soft);border-color:var(--accent);}
+  .sizebtn .ml{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:1px;}
+
+  .addmanual{width:100%;background:none;border:1px dashed var(--line2);border-radius:12px;
+    padding:12px;color:var(--muted);font-size:14px;margin-top:2px;}
+  .addmanual:active{background:var(--bg2);}
+
+  /* record list */
+  .rec{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line);}
+  .rec:last-child{border-bottom:none;}
+  .rec .time{font-size:13px;color:var(--faint);width:48px;flex:none;}
+  .rec .info{flex:1;min-width:0;}
+  .rec .info .n{font-size:15px;}
+  .rec .info .m{font-size:12px;color:var(--muted);}
+  .rec .g{font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;}
+  .rec .del{padding:8px;color:var(--faint);font-size:18px;line-height:1;}
+  .rec .del:active{color:var(--danger);}
+  .empty{color:var(--faint);font-size:14px;text-align:center;padding:18px 0;}
+
+  /* memory + memo block */
+  .block{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:10px;}
+  .block .bl{font-size:12px;color:var(--muted);letter-spacing:.08em;margin-bottom:10px;}
+  .mem-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .mem-opt{background:var(--bg3);border:1px solid var(--line2);border-radius:11px;padding:11px 8px;
+    font-size:13.5px;text-align:center;color:var(--text);transition:.12s;}
+  .mem-opt small{display:block;font-size:10px;color:var(--faint);margin-top:2px;}
+  .mem-opt.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .mem-opt.on small{color:var(--accent);}
+
+  /* bottom nav */
+  .nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(22,21,26,.94);
+    backdrop-filter:saturate(150%) blur(12px);-webkit-backdrop-filter:saturate(150%) blur(12px);
+    border-top:1px solid var(--line);padding-bottom:var(--safe-bot);z-index:50;}
+  .nav button{flex:1;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:var(--faint);font-size:11px;}
+  .nav button .ic{font-size:21px;line-height:1;}
+  .nav button.on{color:var(--accent);}
+
+  /* calendar */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 14px;}
+  .cal-head .mo{font-size:18px;font-weight:600;}
+  .cal-nav{background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+    width:40px;height:40px;font-size:18px;display:flex;align-items:center;justify-content:center;}
+  .cal-nav:active{background:var(--bg3);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-dow{font-size:11px;color:var(--faint);text-align:center;padding:2px 0 6px;}
+  .cal-cell{aspect-ratio:1/1.12;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+    padding:5px 4px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    position:relative;}
+  .cal-cell.empty-c{background:transparent;border:none;}
+  .cal-cell .dn{font-size:12px;color:var(--muted);}
+  .cal-cell.today .dn{color:var(--accent);font-weight:700;}
+  .cal-cell .cg{font-size:12px;font-weight:700;color:var(--accent);margin-top:auto;}
+  .cal-cell .memdot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;}
+  .cal-cell.drank{border-color:rgba(217,160,91,.35);}
+  .cal-legend{font-size:11px;color:var(--faint);margin-top:14px;text-align:center;line-height:1.7;}
+
+  /* settings */
+  .set-row{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);
+    border-radius:13px;padding:11px 12px;margin-bottom:8px;}
+  .set-row .nm{flex:1;min-width:0;}
+  .set-row .nm .s{font-size:12px;color:var(--muted);}
+  .iconbtn{width:34px;height:34px;border:1px solid var(--line2);border-radius:9px;font-size:15px;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);flex:none;background:var(--bg3);}
+  .iconbtn:active{background:var(--accent-soft);}
+  .btn{display:block;width:100%;text-align:center;border-radius:12px;padding:13px;font-size:15px;font-weight:600;}
+  .btn-primary{background:var(--accent);color:#1a160d;}
+  .btn-primary:active{filter:brightness(.92);}
+  .btn-ghost{background:var(--bg2);border:1px solid var(--line2);color:var(--text);}
+  .btn-danger{background:none;border:1px solid var(--danger);color:var(--danger);}
+  .btn-danger:active{background:rgba(204,122,107,.12);}
+  details{background:var(--bg2);border:1px solid var(--line);border-radius:13px;padding:4px 14px;margin-top:8px;}
+  summary{padding:10px 0;font-size:14px;font-weight:500;cursor:pointer;list-style:none;}
+  summary::-webkit-details-marker{display:none;}
+  details[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px;}
+  details p,details li{font-size:13.5px;color:var(--muted);line-height:1.7;}
+  .footnote{font-size:11px;color:var(--faint);text-align:center;margin-top:22px;line-height:1.7;}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;
+    align-items:flex-end;justify-content:center;padding:0;}
+  .modal{background:var(--bg);width:100%;max-width:560px;border-radius:20px 20px 0 0;
+    border-top:1px solid var(--line2);padding:18px 16px calc(20px + var(--safe-bot));
+    max-height:92vh;overflow-y:auto;animation:up .22s ease;}
+  @keyframes up{from{transform:translateY(28px);opacity:.6;}to{transform:translateY(0);opacity:1;}}
+  .modal h3{font-size:17px;margin-bottom:14px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-actions{display:flex;gap:10px;margin-top:8px;}
+  .modal-actions .btn{flex:1;}
+  .preset-pick{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+  .pp{background:var(--bg3);border:1px solid var(--line2);border-radius:20px;padding:7px 12px;font-size:13px;color:var(--text);}
+  .pp:active{background:var(--accent-soft);border-color:var(--accent);}
+  .gpreview{font-size:13px;color:var(--accent);margin:2px 2px 12px;font-weight:600;}
+
+  /* toast */
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--safe-bot));
+    background:var(--bg3);border:1px solid var(--line2);color:var(--text);font-size:13.5px;
+    padding:10px 16px;border-radius:24px;z-index:200;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="nav" id="nav">
+  <button data-tab="home" class="on"><span class="ic">◎</span>ホーム</button>
+  <button data-tab="cal"><span class="ic">▦</span>カレンダー</button>
+  <button data-tab="set"><span class="ic">⚙</span>設定</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------- storage (device-only, with safe in-memory fallback) ---------- */
+var store = (function(){
+  var mem = {}, ok = true;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+  catch(e){ ok = false; }
+  return {
+    get: function(k){ try { return ok ? localStorage.getItem(k) : (k in mem ? mem[k] : null); }
+                      catch(e){ return k in mem ? mem[k] : null; } },
+    set: function(k,v){ try { if(ok) localStorage.setItem(k,v); else mem[k]=v; }
+                        catch(e){ mem[k]=v; } },
+    del: function(k){ try { if(ok) localStorage.removeItem(k); else delete mem[k]; }
+                      catch(e){ delete mem[k]; } },
+    persistent: ok
+  };
+})();
+
+/* ---------- constants ---------- */
+var DAY_CUTOFF_H = 5; /* 午前5時までは前日扱い */
+var MEMORY = [
+  {t:"あり", c:"#7fb59a"},
+  {t:"部分的になし", c:"#d9c05b"},
+  {t:"ほとんどなし", c:"#d9a05b"},
+  {t:"トラブル発生", c:"#cc7a6b"}
+];
+var DEFAULT_PRESETS = [
+  {id:"beer",        name:"ビール",         abv:5,  sizes:[{ml:350},{ml:500}]},
+  {id:"jasmine",     name:"ジャスミンハイ",  abv:5,  sizes:[{ml:350},{ml:500}]},
+  {id:"greentea",    name:"緑茶ハイ",       abv:5,  sizes:[{ml:350},{ml:500}]},
+  {id:"othertea",    name:"その他お茶ハイ",  abv:5,  sizes:[{ml:350},{ml:500}]},
+  {id:"shochusoda",  name:"焼酎ソーダ割り",  abv:5,  sizes:[{ml:350},{ml:500}]},
+  {id:"highball",    name:"ハイボール",     abv:7,  sizes:[{ml:350},{ml:500}]},
+  {id:"sake",        name:"日本酒",         abv:15, sizes:[{ml:180,label:"1合"}]},
+  {id:"wine",        name:"ワイン",         abv:12, sizes:[{ml:750,label:"ボトル"}]},
+  {id:"tequila",     name:"テキーラ",       abv:40, sizes:[{ml:30,label:"ショット"}]}
+];
+
+/* ---------- state ---------- */
+var state = {
+  presets: load("ik_presets", DEFAULT_PRESETS),
+  records: load("ik_records", []),     /* {id, ts(ISO), name, ml, abv} */
+  days:    load("ik_days", {})         /* "YYYY-MM-DD": {memory:0-3|null, memo:""} */
+};
+var ui = { tab:"home", calY:0, calM:0 };
+
+function load(k, def){
+  var raw = store.get(k);
+  if(raw == null) return def;
+  try { return JSON.parse(raw); } catch(e){ return def; }
+}
+function save(){
+  store.set("ik_presets", JSON.stringify(state.presets));
+  store.set("ik_records", JSON.stringify(state.records));
+  store.set("ik_days", JSON.stringify(state.days));
+}
+
+/* ---------- helpers ---------- */
+function pad(n){ return (n<10?"0":"")+n; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function grams(r){ return r.ml * (r.abv/100) * 0.8; }
+function roundG(x){ return Math.round(x); }
+
+/* drinking-day key: shift back by cutoff hours, then local date */
+function dayKey(ts){
+  var d = new Date(ts - DAY_CUTOFF_H*3600*1000);
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+}
+function todayKey(){ return dayKey(Date.now()); }
+
+var DOW = ["日","月","火","水","木","金","土"];
+function fmtDayLabel(key){
+  var p = key.split("-"); var d = new Date(+p[0], +p[1]-1, +p[2]);
+  return (+p[1])+"月"+(+p[2])+"日（"+DOW[d.getDay()]+"）";
+}
+function recordsOf(key){
+  return state.records
+    .filter(function(r){ return dayKey(new Date(r.ts).getTime())===key; })
+    .sort(function(a,b){ return new Date(a.ts)-new Date(b.ts); });
+}
+function dayMeta(key){ return state.days[key] || {memory:null, memo:""}; }
+function setDayMeta(key, patch){
+  var m = dayMeta(key); m = {memory:m.memory, memo:m.memo};
+  for(var k in patch) m[k]=patch[k];
+  if(m.memory==null && (!m.memo || !m.memo.trim())) delete state.days[key];
+  else state.days[key]=m;
+  save();
+}
+function toLocalInput(ts){
+  var d = new Date(ts);
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+function sizeLabel(s){ return s.label ? s.label : s.ml+"ml"; }
+
+function toast(msg){
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove("show"); }, 1600);
+}
+
+/* ---------- record actions ---------- */
+function addRecord(name, ml, abv, ts){
+  var r = {id:uid(), ts:new Date(ts).toISOString(), name:name, ml:+ml, abv:+abv};
+  state.records.push(r); save(); return r;
+}
+function quickAdd(preset, size){
+  var r = addRecord(preset.name, size.ml, preset.abv, Date.now());
+  toast(preset.name+" "+sizeLabel(size)+" を追加（+"+roundG(grams(r))+"g）");
+  render();
+}
+function deleteRecord(id){
+  state.records = state.records.filter(function(r){ return r.id!==id; });
+  save();
+}
+
+/* ============================================================ RENDER */
+var app = document.getElementById("app");
+
+function render(){
+  if(ui.tab==="home") renderHome();
+  else if(ui.tab==="cal") renderCalendar();
+  else renderSettings();
+  var btns = document.querySelectorAll("#nav button");
+  for(var i=0;i<btns.length;i++) btns[i].classList.toggle("on", btns[i].dataset.tab===ui.tab);
+}
+
+/* -------- HOME -------- */
+function renderHome(){
+  var key = todayKey();
+  var recs = recordsOf(key);
+  var totalG = 0, totalMl = 0;
+  recs.forEach(function(r){ totalG += grams(r); totalMl += r.ml; });
+
+  var html = "";
+  html += '<div class="topbar"><span class="day">'+fmtDayLabel(key)+'</span>'
+        + '<span class="hint">深夜5時までは前日に集計</span></div>';
+
+  html += '<div class="total"><div class="label">今日の純アルコール量</div>'
+        + '<div class="g tabular">'+roundG(totalG)+'<small>g</small></div>'
+        + '<div class="sub tabular"><b>'+recs.length+'</b> 杯 ・ <b>'+totalMl+'</b> ml</div></div>';
+
+  html += '<div class="section-label">タップして追加</div>';
+  state.presets.forEach(function(p){
+    html += '<div class="preset-row"><div class="nm">'+esc(p.name)
+          + '<span class="abv">'+p.abv+'%</span></div>';
+    p.sizes.forEach(function(s, si){
+      html += '<button class="sizebtn" data-add="'+p.id+'" data-si="'+si+'">'
+            + (s.label?esc(s.label):s.ml)
+            + '<span class="ml">'+(s.label?s.ml+"ml":"&nbsp;")+'</span></button>';
+    });
+    html += '</div>';
+  });
+  html += '<button class="addmanual" id="manualAdd">＋ 種類・量・日時を指定して追加</button>';
+
+  html += '<div class="section-label">今日の記録</div>';
+  if(recs.length===0){
+    html += '<div class="empty">まだ記録がありません</div>';
+  } else {
+    recs.slice().reverse().forEach(function(r){ html += recRow(r); });
+  }
+
+  html += '<div class="block"><div class="bl">記憶</div>'+memHtml(key)+'</div>';
+  html += '<div class="block"><div class="bl">メモ</div>'
+        + '<textarea id="memo" placeholder="誰と・どこで など（後からカレンダーでも編集できます）">'
+        + esc(dayMeta(key).memo)+'</textarea></div>';
+
+  app.innerHTML = html;
+  bindHome(key);
+}
+
+function recRow(r){
+  var d = new Date(r.ts);
+  return '<div class="rec" data-edit="'+r.id+'">'
+    + '<div class="time tabular">'+pad(d.getHours())+":"+pad(d.getMinutes())+'</div>'
+    + '<div class="info"><div class="n">'+esc(r.name)+'</div>'
+    + '<div class="m tabular">'+r.ml+'ml ・ '+r.abv+'%</div></div>'
+    + '<div class="g tabular">'+roundG(grams(r))+'g</div>'
+    + '<button class="del" data-del="'+r.id+'" aria-label="削除">×</button></div>';
+}
+
+function memHtml(key){
+  var cur = dayMeta(key).memory;
+  var h = '<div class="mem-opts" data-memkey="'+key+'">';
+  MEMORY.forEach(function(m, i){
+    h += '<button class="mem-opt'+(cur===i?" on":"")+'" data-mem="'+i+'">'+m.t
+      + (m.s?'<small>'+m.s+'</small>':'')+'</button>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function bindHome(key){
+  document.querySelectorAll("[data-add]").forEach(function(b){
+    b.onclick = function(){
+      var p = state.presets.filter(function(x){return x.id===b.dataset.add;})[0];
+      if(p) quickAdd(p, p.sizes[+b.dataset.si]);
+    };
+  });
+  document.getElementById("manualAdd").onclick = function(){ openRecordModal(null, null); };
+  bindRecRows(function(){ renderHome(); });
+  bindMem();
+  var memo = document.getElementById("memo");
+  if(memo) memo.oninput = function(){ setDayMeta(key, {memo:memo.value}); };
+}
+
+function bindRecRows(refresh){
+  document.querySelectorAll("[data-del]").forEach(function(b){
+    b.onclick = function(ev){ ev.stopPropagation();
+      var r = state.records.filter(function(x){return x.id===b.dataset.del;})[0];
+      confirmBox("この記録を削除しますか？", r? (r.name+" "+r.ml+"ml") : "", function(){
+        deleteRecord(b.dataset.del); refresh();
+      });
+    };
+  });
+  document.querySelectorAll("[data-edit]").forEach(function(row){
+    row.onclick = function(){
+      var r = state.records.filter(function(x){return x.id===row.dataset.edit;})[0];
+      if(r) openRecordModal(r, null, refresh);
+    };
+  });
+}
+
+function bindMem(){
+  document.querySelectorAll(".mem-opts").forEach(function(box){
+    var key = box.dataset.memkey;
+    box.querySelectorAll("[data-mem]").forEach(function(b){
+      b.onclick = function(){
+        var v = +b.dataset.mem;
+        var cur = dayMeta(key).memory;
+        setDayMeta(key, {memory: cur===v ? null : v});
+        render();
+      };
+    });
+  });
+}
+
+/* -------- CALENDAR -------- */
+function renderCalendar(){
+  if(!ui.calY){ var t=todayKey().split("-"); ui.calY=+t[0]; ui.calM=+t[1]-1; }
+  var y=ui.calY, m=ui.calM;
+  var first = new Date(y,m,1).getDay();
+  var dim = new Date(y,m+1,0).getDate();
+  var tk = todayKey();
+
+  var html = '<div class="cal-head"><button class="cal-nav" id="prev">‹</button>'
+           + '<span class="mo">'+y+'年'+(m+1)+'月</span>'
+           + '<button class="cal-nav" id="next">›</button></div>';
+  html += '<div class="cal-grid">';
+  DOW.forEach(function(d){ html += '<div class="cal-dow">'+d+'</div>'; });
+  for(var i=0;i<first;i++) html += '<div class="cal-cell empty-c"></div>';
+  for(var dd=1; dd<=dim; dd++){
+    var key = y+"-"+pad(m+1)+"-"+pad(dd);
+    var recs = recordsOf(key);
+    var g=0; recs.forEach(function(r){ g+=grams(r); });
+    var meta = dayMeta(key);
+    var cls = "cal-cell"+(key===tk?" today":"")+(recs.length?" drank":"");
+    html += '<div class="'+cls+'" data-day="'+key+'">';
+    if(meta.memory!=null) html += '<span class="memdot" style="background:'+MEMORY[meta.memory].c+'"></span>';
+    html += '<span class="dn tabular">'+dd+'</span>';
+    if(recs.length) html += '<span class="cg tabular">'+roundG(g)+'g</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+  html += '<div class="cal-legend">日付をタップすると、その日の記録・記憶・メモを確認/編集できます<br>'
+        + '右上の点 = 記憶レベル　／　数字 = 純アルコール量(g)</div>';
+
+  app.innerHTML = html;
+  document.getElementById("prev").onclick = function(){ ui.calM--; if(ui.calM<0){ui.calM=11;ui.calY--;} renderCalendar(); };
+  document.getElementById("next").onclick = function(){ ui.calM++; if(ui.calM>11){ui.calM=0;ui.calY++;} renderCalendar(); };
+  document.querySelectorAll("[data-day]").forEach(function(c){
+    c.onclick = function(){ openDayModal(c.dataset.day); };
+  });
+}
+
+/* -------- SETTINGS -------- */
+function renderSettings(){
+  var html = '<div class="topbar"><span class="day">設定</span></div>';
+  html += '<div class="section-label">プリセット（種類・量・度数）</div>';
+  state.presets.forEach(function(p, idx){
+    var sz = p.sizes.map(sizeLabel).join(" / ");
+    html += '<div class="set-row"><div class="nm"><div>'+esc(p.name)+'</div>'
+          + '<div class="s tabular">'+p.abv+'% ・ '+esc(sz)+'</div></div>'
+          + '<button class="iconbtn" data-up="'+idx+'">▲</button>'
+          + '<button class="iconbtn" data-down="'+idx+'">▼</button>'
+          + '<button class="iconbtn" data-pedit="'+p.id+'">✎</button></div>';
+  });
+  html += '<button class="btn btn-ghost" id="addPreset" style="margin-top:6px;">＋ プリセットを追加</button>';
+
+  html += '<div class="section-label">ホーム画面に追加（アプリ化）</div>';
+  html += '<details><summary>iPhoneでアプリのように使う手順</summary>'
+        + '<p><b>Chromeの場合：</b>下部または右上の共有ボタン（□に↑）→「ホーム画面に追加」。</p>'
+        + '<p><b>Safariの場合：</b>下部の共有ボタン→「ホーム画面に追加」→「Webアプリとして開く」をオン。</p>'
+        + '<p>追加後はアイコンから全画面で起動します。最も確実に全画面・データ保持したい場合は、追加作業だけSafariで行うのがおすすめです。</p>'
+        + '</details>';
+
+  html += '<div class="section-label">データ</div>';
+  html += '<button class="btn btn-danger" id="wipe">すべての記録を削除</button>';
+
+  var stat = store.persistent
+    ? "記録はこの端末のブラウザ内に保存されています（クラウド保存・バックアップはありません）。"
+    : "⚠ プレビュー表示中：この環境ではデータが保存されません。ファイルをご自身の端末で開くと保存されます。";
+  html += '<div class="footnote">'+stat+'<br>飲酒記録 v1 ・ 完全オフライン</div>';
+
+  app.innerHTML = html;
+  bindSettings();
+}
+
+function bindSettings(){
+  document.querySelectorAll("[data-pedit]").forEach(function(b){
+    b.onclick = function(){ openPresetModal(b.dataset.pedit); };
+  });
+  document.querySelectorAll("[data-up]").forEach(function(b){
+    b.onclick = function(){ var i=+b.dataset.up; if(i>0){ swap(state.presets,i,i-1); save(); renderSettings(); } };
+  });
+  document.querySelectorAll("[data-down]").forEach(function(b){
+    b.onclick = function(){ var i=+b.dataset.down; if(i<state.presets.length-1){ swap(state.presets,i,i+1); save(); renderSettings(); } };
+  });
+  document.getElementById("addPreset").onclick = function(){ openPresetModal(null); };
+  document.getElementById("wipe").onclick = function(){
+    confirmBox("すべての記録を削除しますか？", "この操作は取り消せません。記録・記憶・メモがすべて消えます。", function(){
+      state.records=[]; state.days={}; save(); toast("削除しました"); render();
+    }, true);
+  };
+}
+function swap(a,i,j){ var t=a[i]; a[i]=a[j]; a[j]=t; }
+
+/* ============================================================ MODALS */
+var modalEl = null;
+function openModal(inner){
+  closeModal();
+  modalEl = document.createElement("div");
+  modalEl.className = "modal-bg";
+  modalEl.innerHTML = '<div class="modal">'+inner+'</div>';
+  modalEl.addEventListener("click", function(e){ if(e.target===modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+  return modalEl.querySelector(".modal");
+}
+function closeModal(){ if(modalEl){ modalEl.remove(); modalEl=null; } }
+
+/* record add / edit */
+function openRecordModal(rec, defaultKey, after){
+  var isEdit = !!rec;
+  var ts = rec ? new Date(rec.ts).getTime()
+              : (defaultKey ? defaultDayTs(defaultKey) : Date.now());
+  var name = rec? rec.name : "";
+  var ml = rec? rec.ml : "";
+  var abv = rec? rec.abv : "";
+
+  var picks = '<div class="preset-pick">';
+  state.presets.forEach(function(p){
+    p.sizes.forEach(function(s){
+      picks += '<button class="pp" data-pp="'+p.id+'" data-ppsi="'+p.sizes.indexOf(s)+'">'
+            + esc(p.name)+' '+esc(sizeLabel(s))+'</button>';
+    });
+  });
+  picks += '</div>';
+
+  var inner = '<h3>'+(isEdit?"記録を編集":"記録を追加")+'</h3>';
+  if(!isEdit) inner += '<div class="field"><label>プリセットから選ぶ</label>'+picks+'</div>';
+  inner += '<div class="field"><label>種類</label><input id="f_name" value="'+esc(name)+'" placeholder="例：ビール"></div>';
+  inner += '<div class="row2"><div class="field"><label>量 (ml)</label><input id="f_ml" type="number" inputmode="numeric" value="'+ml+'"></div>'
+        + '<div class="field"><label>度数 (%)</label><input id="f_abv" type="number" inputmode="decimal" value="'+abv+'"></div></div>';
+  inner += '<div class="gpreview" id="gprev"></div>';
+  inner += '<div class="field"><label>日時</label><input id="f_ts" type="datetime-local" value="'+toLocalInput(ts)+'"></div>';
+  inner += '<div class="modal-actions">';
+  if(isEdit) inner += '<button class="btn btn-danger" id="m_del">削除</button>';
+  inner += '<button class="btn btn-ghost" id="m_cancel">キャンセル</button>'
+        + '<button class="btn btn-primary" id="m_save">保存</button></div>';
+
+  var m = openModal(inner);
+  var fName=m.querySelector("#f_name"), fMl=m.querySelector("#f_ml"),
+      fAbv=m.querySelector("#f_abv"), fTs=m.querySelector("#f_ts"), gp=m.querySelector("#gprev");
+
+  function upd(){
+    var v = (+fMl.value||0)*((+fAbv.value||0)/100)*0.8;
+    gp.textContent = (fMl.value&&fAbv.value) ? "純アルコール量 ≒ "+roundG(v)+"g" : "";
+  }
+  fMl.oninput=upd; fAbv.oninput=upd; upd();
+
+  m.querySelectorAll("[data-pp]").forEach(function(b){
+    b.onclick=function(){
+      var p=state.presets.filter(function(x){return x.id===b.dataset.pp;})[0];
+      var s=p.sizes[+b.dataset.ppsi];
+      fName.value=p.name; fMl.value=s.ml; fAbv.value=p.abv; upd();
+    };
+  });
+  m.querySelector("#m_cancel").onclick=function(){ closeModal(); if(after) after(); };
+  if(isEdit) m.querySelector("#m_del").onclick=function(){
+    confirmBox("この記録を削除しますか？", rec.name+" "+rec.ml+"ml", function(){
+      deleteRecord(rec.id); closeModal(); if(after) after(); else render();
+    });
+  };
+  m.querySelector("#m_save").onclick=function(){
+    var nm=fName.value.trim(), ml2=+fMl.value, abv2=+fAbv.value;
+    if(!nm){ toast("種類を入力してください"); return; }
+    if(!(ml2>0)){ toast("量(ml)を入力してください"); return; }
+    if(!(abv2>=0)){ toast("度数を入力してください"); return; }
+    var tsVal = fTs.value ? new Date(fTs.value).getTime() : Date.now();
+    if(isEdit){ rec.name=nm; rec.ml=ml2; rec.abv=abv2; rec.ts=new Date(tsVal).toISOString(); save(); }
+    else { addRecord(nm, ml2, abv2, tsVal); }
+    closeModal(); if(after) after(); else render();
+    toast(isEdit?"更新しました":"追加しました");
+  };
+}
+function defaultDayTs(key){
+  var p=key.split("-"); /* 飲酒日の代表時刻として 21:00 を既定に */
+  return new Date(+p[0], +p[1]-1, +p[2], 21, 0).getTime();
+}
+
+/* day detail (from calendar) */
+function openDayModal(key){
+  var recs = recordsOf(key);
+  var g=0,ml=0; recs.forEach(function(r){ g+=grams(r); ml+=r.ml; });
+
+  var inner = '<h3>'+fmtDayLabel(key)+'</h3>';
+  inner += '<div class="total" style="margin-bottom:14px;padding:14px;">'
+        + '<div class="g tabular" style="font-size:40px;">'+roundG(g)+'<small>g</small></div>'
+        + '<div class="sub tabular"><b>'+recs.length+'</b> 杯 ・ <b>'+ml+'</b> ml</div></div>';
+
+  if(recs.length===0) inner += '<div class="empty">この日の記録はありません</div>';
+  else recs.forEach(function(r){ inner += recRow(r); });
+
+  inner += '<button class="addmanual" id="d_add" style="margin-top:10px;">＋ この日に記録を追加</button>';
+  inner += '<div class="block"><div class="bl">記憶</div>'+memHtml(key)+'</div>';
+  inner += '<div class="block"><div class="bl">メモ</div>'
+        + '<textarea id="d_memo" placeholder="誰と・どこで など">'+esc(dayMeta(key).memo)+'</textarea></div>';
+  inner += '<div class="modal-actions"><button class="btn btn-ghost" id="d_close">閉じる</button></div>';
+
+  var m = openModal(inner);
+  var refresh = function(){ openDayModal(key); };
+  bindRecRowsIn(m, refresh);
+  m.querySelector("#d_add").onclick=function(){ openRecordModal(null, key, refresh); };
+  m.querySelectorAll(".mem-opts [data-mem]").forEach(function(b){
+    b.onclick=function(){ var v=+b.dataset.mem; var cur=dayMeta(key).memory;
+      setDayMeta(key,{memory:cur===v?null:v}); refresh(); };
+  });
+  m.querySelector("#d_memo").oninput=function(){ setDayMeta(key,{memo:this.value}); };
+  m.querySelector("#d_close").onclick=function(){ closeModal(); if(ui.tab==="cal") renderCalendar(); };
+}
+function bindRecRowsIn(scope, refresh){
+  scope.querySelectorAll("[data-del]").forEach(function(b){
+    b.onclick=function(ev){ ev.stopPropagation();
+      var r=state.records.filter(function(x){return x.id===b.dataset.del;})[0];
+      confirmBox("この記録を削除しますか？", r?(r.name+" "+r.ml+"ml"):"", function(){
+        deleteRecord(b.dataset.del); refresh();
+      });
+    };
+  });
+  scope.querySelectorAll("[data-edit]").forEach(function(row){
+    row.onclick=function(){
+      var r=state.records.filter(function(x){return x.id===row.dataset.edit;})[0];
+      if(r) openRecordModal(r, null, refresh);
+    };
+  });
+}
+
+/* preset add / edit */
+function openPresetModal(id){
+  var p = id ? state.presets.filter(function(x){return x.id===id;})[0]
+             : {id:null, name:"", abv:"", sizes:[{ml:350}]};
+  var working = {name:p.name, abv:p.abv, sizes:p.sizes.map(function(s){return {ml:s.ml,label:s.label||""};})};
+
+  function sizeRows(){
+    var h="";
+    working.sizes.forEach(function(s,i){
+      h += '<div class="row2" style="grid-template-columns:1fr 1fr auto;align-items:center;margin-bottom:8px;">'
+        + '<input type="number" inputmode="numeric" placeholder="ml" value="'+(s.ml||"")+'" data-sml="'+i+'">'
+        + '<input placeholder="表示名(任意)" value="'+esc(s.label)+'" data-slabel="'+i+'">'
+        + '<button class="iconbtn" data-srm="'+i+'">×</button></div>';
+    });
+    return h;
+  }
+  function build(){
+    var inner = '<h3>'+(id?"プリセットを編集":"プリセットを追加")+'</h3>';
+    inner += '<div class="field"><label>種類名</label><input id="p_name" value="'+esc(working.name)+'"></div>';
+    inner += '<div class="field"><label>度数 (%)</label><input id="p_abv" type="number" inputmode="decimal" value="'+working.abv+'"></div>';
+    inner += '<div class="field"><label>サイズ（ml ／ 表示名）</label><div id="p_sizes">'+sizeRows()+'</div>'
+          + '<button class="btn btn-ghost" id="p_addsize" style="padding:9px;font-size:13px;">＋ サイズを追加</button></div>';
+    inner += '<div class="modal-actions">';
+    if(id) inner += '<button class="btn btn-danger" id="p_del">削除</button>';
+    inner += '<button class="btn btn-ghost" id="p_cancel">キャンセル</button>'
+          + '<button class="btn btn-primary" id="p_save">保存</button></div>';
+    var m = openModal(inner);
+    syncInputs(m);
+    m.querySelector("#p_addsize").onclick=function(){ syncInputs(m); working.sizes.push({ml:"",label:""}); build(); };
+    m.querySelectorAll("[data-srm]").forEach(function(b){
+      b.onclick=function(){ syncInputs(m); working.sizes.splice(+b.dataset.srm,1);
+        if(working.sizes.length===0) working.sizes.push({ml:"",label:""}); build(); };
+    });
+    m.querySelector("#p_cancel").onclick=closeModal;
+    if(id) m.querySelector("#p_del").onclick=function(){
+      confirmBox("「"+p.name+"」を削除しますか？","", function(){
+        state.presets=state.presets.filter(function(x){return x.id!==id;}); save(); closeModal(); renderSettings();
+      });
+    };
+    m.querySelector("#p_save").onclick=function(){
+      syncInputs(m);
+      var nm=working.name.trim();
+      if(!nm){ toast("種類名を入力してください"); return; }
+      var sizes=working.sizes.filter(function(s){return +s.ml>0;})
+        .map(function(s){ var o={ml:+s.ml}; if(s.label&&s.label.trim()) o.label=s.label.trim(); return o; });
+      if(sizes.length===0){ toast("サイズ(ml)を1つ以上入力してください"); return; }
+      var abv=+working.abv||0;
+      if(id){ p.name=nm; p.abv=abv; p.sizes=sizes; }
+      else state.presets.push({id:uid(), name:nm, abv:abv, sizes:sizes});
+      save(); closeModal(); renderSettings(); toast("保存しました");
+    };
+  }
+  function syncInputs(m){
+    var n=m.querySelector("#p_name"), a=m.querySelector("#p_abv");
+    if(n) working.name=n.value; if(a) working.abv=a.value;
+    m.querySelectorAll("[data-sml]").forEach(function(inp){ working.sizes[+inp.dataset.sml].ml=inp.value; });
+    m.querySelectorAll("[data-slabel]").forEach(function(inp){ working.sizes[+inp.dataset.slabel].label=inp.value; });
+  }
+  build();
+}
+
+/* confirm dialog */
+function confirmBox(title, body, onYes, danger){
+  var inner = '<h3>'+esc(title)+'</h3>';
+  if(body) inner += '<p class="muted" style="font-size:14px;margin:0 0 16px;">'+esc(body)+'</p>';
+  inner += '<div class="modal-actions"><button class="btn btn-ghost" id="c_no">キャンセル</button>'
+        + '<button class="btn '+(danger?"btn-danger":"btn-primary")+'" id="c_yes">'+(danger?"削除する":"OK")+'</button></div>';
+  var m = openModal(inner);
+  m.querySelector("#c_no").onclick=closeModal;
+  m.querySelector("#c_yes").onclick=function(){ closeModal(); onYes(); };
+}
+
+/* ============================================================ NAV + ICON */
+document.getElementById("nav").addEventListener("click", function(e){
+  var b = e.target.closest("button"); if(!b) return;
+  ui.tab = b.dataset.tab; closeModal(); render();
+});
+
+/* generate home-screen icon + manifest at runtime */
+(function(){
+  try{
+    var c=document.createElement("canvas"); c.width=c.height=180;
+    var x=c.getContext("2d");
+    x.fillStyle="#16151a"; x.fillRect(0,0,180,180);
+    /* crescent moon */
+    x.fillStyle="rgba(217,160,91,.55)";
+    x.beginPath(); x.arc(132,46,17,0,Math.PI*2); x.fill();
+    x.fillStyle="#16151a"; x.beginPath(); x.arc(124,42,15,0,Math.PI*2); x.fill();
+    /* glass */
+    x.strokeStyle="#d9a05b"; x.lineWidth=6; x.lineJoin="round";
+    x.beginPath(); x.moveTo(62,52); x.lineTo(118,52); x.lineTo(104,140); x.lineTo(76,140); x.closePath(); x.stroke();
+    /* liquid */
+    x.fillStyle="#d9a05b";
+    x.beginPath(); x.moveTo(70,96); x.lineTo(110,96); x.lineTo(104,140); x.lineTo(76,140); x.closePath(); x.fill();
+    var url=c.toDataURL("image/png");
+    var link=document.createElement("link"); link.rel="apple-touch-icon"; link.href=url; document.head.appendChild(link);
+    var man={name:"飲酒記録",short_name:"飲酒記録",display:"standalone",
+      background_color:"#16151a",theme_color:"#16151a",start_url:".",
+      icons:[{src:url,sizes:"180x180",type:"image/png"}]};
+    var ml=document.createElement("link"); ml.rel="manifest";
+    ml.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));
+    document.head.appendChild(ml);
+  }catch(e){}
+})();
+
+render();
+</script>
+</body>
+</html>
